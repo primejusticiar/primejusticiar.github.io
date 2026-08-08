@@ -1,480 +1,1342 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uz">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Doniyor // OSINT Dominance</title>
-  <meta name="description" content="Doniyor — OSINT Specialist. Intelligence extracted, noise destroyed." />
-  <style>
-    :root {
-      --bg: #07090f;
-      --panel: #0f1420;
-      --panel-2: #111827;
-      --text: #e6f1ff;
-      --muted: #8ea0bd;
-      --accent: #4ade80;
-      --accent-2: #22d3ee;
-      --danger: #f43f5e;
-      --line: rgba(255, 255, 255, 0.09);
-      --glow: 0 0 28px rgba(34, 211, 238, 0.25), 0 0 60px rgba(74, 222, 128, 0.12);
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a1a4d">
+<title>Omad Tour</title>
+<style>
+/* =========================================================
+   DESIGN TOKENS
+   ========================================================= */
+:root{
+  --bg-1:#050d2b; --bg-2:#0a1a4d; --bg-3:#123073;
+  --glass:rgba(255,255,255,.09); --glass-border:rgba(255,255,255,.22); --glass-hover:rgba(255,255,255,.16);
+  --text:#e9eefb; --text-dim:#b8c4e6;
+  --accent-red:#e8354f; --accent-red-dark:#c22440;
+  --accent-green:#3ecf8e; --accent-amber:#ffc14d;
+  --radius:20px; --radius-sm:12px;
+  --shadow-1:0 6px 20px rgba(0,0,0,.28);
+  --ease:cubic-bezier(.22,1,.36,1);
+  --dur-fast:150ms; --dur:280ms; --dur-slow:420ms;
+  font-family:'Segoe UI',Roboto,Arial,sans-serif;
+  color-scheme: dark;
+}
+body.theme-light{
+  --bg-1:#eef2fb; --bg-2:#dde6f8; --bg-3:#c9d9f5;
+  --glass:rgba(10,26,77,.055); --glass-border:rgba(10,26,77,.16); --glass-hover:rgba(10,26,77,.1);
+  --text:#0c1c4d; --text-dim:#4c5a86;
+  color-scheme: light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg-1);}
+body{
+  color:var(--text);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(30,70,180,.55), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(10,30,90,.6), transparent 50%),
+    radial-gradient(circle at 20% 20%, var(--bg-3), var(--bg-2) 45%, var(--bg-1) 100%);
+  position:relative; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  transition:background var(--dur-slow) var(--ease), color var(--dur-slow) var(--ease);
+}
+#dots-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+#app{position:relative;z-index:1;height:100vh;height:100dvh;width:100vw;max-width:520px;margin:0 auto;
+  display:flex;flex-direction:column;overflow:hidden;}
+@media (min-width:900px){
+  body{display:flex;align-items:center;justify-content:center;}
+  #app{max-width:1000px;height:88vh;max-height:900px;border-radius:28px;
+    box-shadow:0 30px 80px rgba(0,0,0,.5);border:1px solid var(--glass-border);}
+}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:10px;}
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+/* =========================================================
+   SCREEN TRANSITIONS (real, GPU-accelerated, direction-aware)
+   ========================================================= */
+.screen-stack{position:relative;flex:1;min-height:0;}
+.screen{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  padding:18px 18px 28px;overflow-y:auto;overscroll-behavior:contain;
+  will-change:transform,opacity;
+}
+.screen.enter-fwd{animation:slideInFwd var(--dur) var(--ease) both;}
+.screen.leave-fwd{animation:slideOutFwd var(--dur) var(--ease) both;}
+.screen.enter-back{animation:slideInBack var(--dur) var(--ease) both;}
+.screen.leave-back{animation:slideOutBack var(--dur) var(--ease) both;}
+@keyframes slideInFwd{from{transform:translateX(28px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes slideOutFwd{from{transform:translateX(0);opacity:1;}to{transform:translateX(-28px);opacity:0;}}
+@keyframes slideInBack{from{transform:translateX(-28px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes slideOutBack{from{transform:translateX(0);opacity:1;}to{transform:translateX(28px);opacity:0;}}
+@media (prefers-reduced-motion: reduce){
+  .screen{animation:none !important;}
+}
 
-    html, body {
-      height: 100%;
-    }
+/* =========================================================
+   TOP BAR / NAV
+   ========================================================= */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;min-height:40px;gap:8px;}
+.topbar .spacer{flex:1;}
+.back-btn{background:var(--accent-red);color:#fff;border:none;border-radius:14px;padding:8px 16px;
+  font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(230,50,80,.35);
+  display:flex;align-items:center;gap:6px;transition:transform var(--dur-fast),background var(--dur-fast);}
+.back-btn:active{background:var(--accent-red-dark);transform:scale(.94);}
+.lang-switch{display:flex;gap:6px;}
+.lang-btn{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(14px);
+  color:var(--text);border-radius:12px;padding:6px 10px;font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:4px;transition:all var(--dur-fast);}
+.lang-btn.active{background:var(--glass-hover);border-color:#fff;transform:scale(1.04);}
+.bell-btn{position:relative;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(14px);
+  color:var(--text);border-radius:12px;padding:8px 13px;font-size:16px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;transition:transform var(--dur-fast);}
+.bell-btn:active{transform:scale(.9);}
+.bell-btn svg{width:19px;height:19px;display:block;}
+.bell-btn .badge{position:absolute;top:-6px;right:-6px;background:var(--accent-red);color:#fff;
+  font-size:10.5px;font-weight:800;border-radius:10px;min-width:17px;height:17px;
+  display:flex;align-items:center;justify-content:center;padding:0 3px;box-shadow:0 2px 6px rgba(0,0,0,.4);
+  animation:badgePop .35s var(--ease);}
+@keyframes badgePop{from{transform:scale(0);}70%{transform:scale(1.25);}to{transform:scale(1);}}
 
-    body {
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(1200px 800px at 85% -10%, rgba(34, 211, 238, 0.12), transparent 55%),
-        radial-gradient(1000px 700px at -10% 20%, rgba(244, 63, 94, 0.10), transparent 55%),
-        linear-gradient(180deg, #05070d 0%, #080c14 100%);
-      overflow-x: hidden;
-    }
+/* =========================================================
+   HOME
+   ========================================================= */
+.logo-wrap{display:flex;justify-content:center;margin:6px 0 18px;}
+.logo-circle{width:104px;height:104px;border-radius:50%;overflow:hidden;border:3px solid #8c2464;
+  box-shadow:0 8px 26px rgba(0,0,0,.35);background:#fff;display:flex;align-items:center;justify-content:center;
+  padding:16px;cursor:pointer;transition:transform var(--dur-fast);}
+.logo-circle:active{transform:scale(.93);}
+.logo-circle img{width:100%;height:100%;object-fit:contain;}
+.greeting{text-align:center;font-size:16px;line-height:1.5;margin:0 6px 22px;font-weight:600;
+  background:linear-gradient(100deg,var(--text) 30%,#9fc4ff 50%,var(--text) 70%);
+  background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shimmer 5s linear infinite;}
+@keyframes shimmer{0%{background-position:0% 0;}100%{background-position:-220% 0;}}
+.home-scroll{flex:1;display:flex;flex-direction:column;overflow-y:auto;}
+.menu-list{display:flex;flex-direction:column;gap:12px;margin-top:auto;margin-bottom:6px;}
+@media (min-width:900px){ .menu-list{display:grid;grid-template-columns:1fr 1fr;gap:14px;} .home-scroll{padding:0 6vw;} .greeting{max-width:640px;margin-left:auto;margin-right:auto;} }
 
-    .grid-overlay {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 30px 30px;
-      mask-image: radial-gradient(circle at center, black 35%, transparent 100%);
-      z-index: -1;
-    }
+/* =========================================================
+   GLASS BUTTONS
+   ========================================================= */
+.glass-btn{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(16px);
+  color:var(--text);border-radius:var(--radius);padding:16px 18px;font-size:16px;font-weight:600;
+  display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;
+  transition:background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  box-shadow:var(--shadow-1),inset 0 1px 0 rgba(255,255,255,.12);position:relative;overflow:hidden;
+  text-decoration:none;}
+.glass-btn:active{background:var(--glass-hover);transform:scale(.985);}
+.glass-btn .icon-circle{flex-shrink:0;}
+.glass-btn .label{flex:1;}
+.glass-btn .arrow{opacity:.6;font-size:18px;transition:transform var(--dur-fast);}
+.glass-btn:active .arrow{transform:translateX(3px);}
+.glass-btn .label-col{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;}
+.glass-btn .label-col .label{font-size:16px;font-weight:700;}
+.glass-btn .label-col .sub{font-size:12px;font-weight:500;color:var(--text-dim);white-space:normal;line-height:1.3;}
+.glass-btn::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;
+  background:var(--accent-c,transparent);opacity:.85;}
+.accent-1{--accent-c:#4fa8ff;} .accent-2{--accent-c:#ffca4f;} .accent-3{--accent-c:#4fe0c4;}
+.accent-4{--accent-c:#c58bff;} .accent-5{--accent-c:#ff7fae;} .accent-6{--accent-c:#7cff9e;}
+.glass-btn-red{background:rgba(232,53,79,.14);border-color:rgba(232,53,79,.5);}
+.glass-btn-red::before{background:var(--accent-red);opacity:1;}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);transform:scale(0);
+  animation:rippleAnim .55s var(--ease);pointer-events:none;}
+@keyframes rippleAnim{to{transform:scale(2.6);opacity:0;}}
+.icon-circle{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.12);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.icon-circle svg{width:19px;height:19px;}
+h2.title{font-size:18px;margin:0 0 14px;font-weight:700;text-align:center;}
+.section-text{font-size:14.5px;line-height:1.55;color:var(--text-dim);background:var(--glass);
+  border:1px solid var(--glass-border);backdrop-filter:blur(14px);border-radius:16px;padding:14px 16px;margin-bottom:18px;}
+.list-col{display:flex;flex-direction:column;gap:10px;}
+.footer-note{font-size:11.5px;color:var(--text-dim);text-align:center;margin-top:16px;opacity:.7;}
 
-    .scanline {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background: repeating-linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.015),
-        rgba(255,255,255,0.015) 1px,
-        transparent 2px,
-        transparent 4px
-      );
-      mix-blend-mode: soft-light;
-      z-index: 2;
-    }
+/* =========================================================
+   SEARCH INPUT (new)
+   ========================================================= */
+.search-wrap{position:relative;margin-bottom:14px;}
+.search-wrap input{width:100%;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(14px);
+  border-radius:14px;color:var(--text);padding:12px 14px 12px 40px;font-size:15px;font-weight:600;font-family:inherit;}
+.search-wrap svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:17px;height:17px;
+  color:var(--text-dim);pointer-events:none;}
+.search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);
+  border:none;color:var(--text);width:22px;height:22px;border-radius:50%;font-size:12px;cursor:pointer;display:none;}
 
-    .container {
-      width: min(1120px, 92vw);
-      margin: 0 auto;
-      padding: 28px 0 50px;
-    }
+/* =========================================================
+   SKELETON LOADERS (new — replaces plain "Loading" text)
+   ========================================================= */
+.skeleton{background:linear-gradient(100deg, var(--glass) 30%, var(--glass-hover) 50%, var(--glass) 70%);
+  background-size:220% 100%;animation:skelShimmer 1.3s linear infinite;border-radius:14px;}
+@keyframes skelShimmer{0%{background-position:0 0;}100%{background-position:-220% 0;}}
+.skeleton-row{height:64px;margin-bottom:10px;}
+.skeleton-line{height:14px;border-radius:7px;margin-bottom:8px;}
 
-    nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0 24px;
-    }
+/* =========================================================
+   TOAST SYSTEM (new — replaces buried inline status text)
+   ========================================================= */
+#toast-host{position:fixed;left:0;right:0;bottom:18px;z-index:200;display:flex;flex-direction:column;
+  align-items:center;gap:8px;pointer-events:none;padding:0 16px;}
+.toast{max-width:440px;width:100%;background:rgba(10,20,50,.92);color:#fff;border-radius:14px;
+  padding:12px 16px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.4);
+  display:flex;align-items:center;gap:10px;animation:toastIn .32s var(--ease);border:1px solid rgba(255,255,255,.12);}
+.toast.toast-leaving{animation:toastOut .28s var(--ease) forwards;}
+.toast.success{border-color:rgba(62,207,142,.5);}
+.toast.error{border-color:rgba(232,53,79,.5);}
+.toast .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#9fc4ff;}
+.toast.success .dot{background:var(--accent-green);}
+.toast.error .dot{background:var(--accent-red);}
+@keyframes toastIn{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes toastOut{to{transform:translateY(20px);opacity:0;}}
 
-    .brand {
-      letter-spacing: 0.08em;
-      font-weight: 800;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+/* =========================================================
+   OFFLINE BANNER (new)
+   ========================================================= */
+#offline-banner{position:fixed;top:0;left:0;right:0;z-index:250;background:var(--accent-amber);color:#3a2600;
+  text-align:center;font-size:13px;font-weight:700;padding:8px 12px;transform:translateY(-100%);
+  transition:transform var(--dur) var(--ease);}
+#offline-banner.show{transform:translateY(0);}
 
-    .brand-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 18px var(--accent);
-    }
+/* =========================================================
+   RECENT / FAVORITE ROUTES (new)
+   ========================================================= */
+.chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;}
+.chip-row::-webkit-scrollbar{display:none;}
+.chip{flex-shrink:0;background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;
+  padding:8px 14px;font-size:12.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;
+  cursor:pointer;white-space:nowrap;transition:transform var(--dur-fast);}
+.chip:active{transform:scale(.94);}
+.chip .star{color:var(--accent-amber);}
 
-    .tag {
-      color: var(--muted);
-      font-size: 0.9rem;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-    }
+/* form + calendar + everything else kept from original design language */
+input[type="text"],input[type="tel"],textarea{width:100%;background:var(--glass);border:1px solid var(--glass-border);
+  backdrop-filter:blur(14px);border-radius:14px;color:var(--text);padding:16px 14px;font-size:17px;font-weight:600;
+  margin-bottom:6px;font-family:inherit;transition:border-color var(--dur-fast);}
+input:focus,textarea:focus{outline:none;border-color:#9fc4ff;}
+textarea{min-height:120px;resize:vertical;}
+input::placeholder,textarea::placeholder{color:var(--text-dim);opacity:.7;}
+.required-star{color:var(--accent-red);font-weight:800;margin-left:4px;}
+.field-label{font-size:14px;font-weight:600;margin:12px 0 6px;}
+.error-msg{color:var(--accent-red);font-size:12.5px;margin:-2px 0 10px;display:none;}
+.primary-btn{background:var(--accent-red);color:#fff;border:none;border-radius:16px;padding:14px;
+  font-size:15.5px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(230,50,80,.35);margin-top:6px;
+  transition:transform var(--dur-fast),background var(--dur-fast);display:flex;align-items:center;justify-content:center;gap:8px;}
+.primary-btn:active{background:var(--accent-red-dark);transform:scale(.98);}
+.primary-btn:disabled{opacity:.5;pointer-events:none;}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;
+  animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-    .hero {
-      display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 24px;
-      align-items: stretch;
-      margin-top: 12px;
-    }
+.calendar-card{background:#fff;color:#222;border-radius:22px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.4);}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cal-nav-btn{background:none;border:none;font-size:20px;color:#5c1338;cursor:pointer;padding:4px 10px;
+  transition:transform var(--dur-fast);}
+.cal-nav-btn:active{transform:scale(.85);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;}
+.cal-dow{font-size:11.5px;color:#999;font-weight:600;padding:4px 0;}
+.cal-day{padding:9px 0;border-radius:10px;font-size:14px;cursor:pointer;transition:background var(--dur-fast),transform var(--dur-fast);}
+.cal-day.empty{visibility:hidden;}
+.cal-day.today{box-shadow:inset 0 0 0 1.5px #5c1338;font-weight:700;}
+.cal-day:not(.empty):not(.past):hover{background:#f1e0e8;}
+.cal-day:not(.empty):not(.past):active{transform:scale(.9);}
+.cal-day.selected{background:var(--accent-red);color:#fff;font-weight:700;}
+.cal-day.past{opacity:.3;pointer-events:none;}
 
-    .card {
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      box-shadow: var(--glow);
-      backdrop-filter: blur(4px);
-    }
+.upload-box{width:100%;min-height:110px;background:var(--glass);border:2px dashed var(--glass-border);
+  border-radius:16px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:border-color var(--dur-fast),background var(--dur-fast);}
+.upload-box.dragover{border-color:var(--accent-green);background:rgba(62,207,142,.08);}
+.upload-box:active{background:var(--glass-hover);}
+.upload-empty{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-dim);
+  font-size:14px;font-weight:600;padding:20px;text-align:center;}
+.upload-preview{width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;position:relative;}
+.upload-preview img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--glass-border);flex-shrink:0;}
+.upload-info{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
+.upload-info .fname{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.upload-filesize{font-size:12px;color:var(--text-dim);}
+.upload-remove{background:var(--accent-red);color:#fff;border:none;border-radius:50%;width:26px;height:26px;
+  font-size:13px;cursor:pointer;flex-shrink:0;}
+.progress-bar-track{height:4px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;margin-top:8px;}
+.progress-bar-fill{height:100%;width:0%;background:var(--accent-green);border-radius:3px;transition:width .25s var(--ease);}
 
-    .hero-main {
-      padding: 34px;
-      position: relative;
-      overflow: hidden;
-    }
+.status-card{border-radius:16px;padding:16px;margin-bottom:14px;font-size:14.5px;line-height:1.55;
+  border:1px solid var(--glass-border);backdrop-filter:blur(14px);}
+.status-card p{margin:8px 0 0;}
+.status-card-ready{background:rgba(70,200,120,.14);border-color:rgba(70,200,120,.4);}
+.status-card-pending{background:rgba(232,53,79,.1);border-color:rgba(232,53,79,.35);}
+.status-card-new{background:rgba(255,193,7,.1);border-color:rgba(255,193,7,.35);}
 
-    .hero-main::after {
-      content: "";
-      position: absolute;
-      top: -40%;
-      right: -20%;
-      width: 380px;
-      height: 380px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(74,222,128,0.18), transparent 65%);
-      filter: blur(6px);
-      pointer-events: none;
-    }
+.news-item{display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--glass);
+  border:1px solid var(--glass-border);backdrop-filter:blur(14px);border-radius:14px;padding:10px 14px;
+  margin-bottom:10px;font-size:14px;line-height:1.4;transition:background var(--dur-fast),transform var(--dur-fast);}
+.news-item:active{background:var(--glass-hover);transform:scale(.985);}
+.news-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--glass-border);}
+.news-row-text{flex:1;min-width:0;overflow:hidden;}
+.news-row-text .news-date{font-size:11.5px;color:var(--text-dim);margin-bottom:2px;display:block;}
 
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--accent-2);
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      font-weight: 700;
-      font-size: 0.76rem;
-      margin-bottom: 16px;
-    }
+.story-overlay{position:fixed;inset:0;z-index:50;background:#000;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;animation:storyFadeIn .2s ease;}
+@keyframes storyFadeIn{from{opacity:0;}to{opacity:1;}}
+.story-progress{position:absolute;top:12px;left:12px;right:12px;height:3px;background:rgba(255,255,255,.25);
+  border-radius:3px;overflow:hidden;z-index:2;}
+.story-progress-bar{height:100%;width:0%;background:#fff;border-radius:3px;transition:width 5s linear;}
+.story-close{position:absolute;top:24px;left:14px;z-index:2;background:rgba(255,255,255,.18);color:#fff;
+  border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;}
+.story-img{max-width:100%;max-height:78vh;object-fit:contain;}
+.story-caption{color:#fff;font-size:15px;line-height:1.5;text-align:center;padding:18px 24px;max-width:520px;
+  background:linear-gradient(0deg,rgba(0,0,0,.6),transparent);position:absolute;bottom:0;left:0;right:0;padding-top:60px;}
 
-    h1 {
-      font-size: clamp(2rem, 4vw, 3.6rem);
-      line-height: 1.05;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
+.fly-plane{position:fixed;top:8%;left:-8%;z-index:0;pointer-events:none;width:26px;height:26px;opacity:.55;
+  color:var(--text);animation:flyAcross 16s linear infinite;filter:drop-shadow(0 0 6px rgba(0,0,0,.2));}
+@keyframes flyAcross{0%{transform:translate(0,0) rotate(28deg);opacity:0;}8%{opacity:.55;}92%{opacity:.55;}
+  100%{transform:translate(130vw,55vh) rotate(28deg);opacity:0;}}
 
-    h1 .mute {
-      color: #b8cae6;
-      font-weight: 500;
-    }
+.empty-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:40px 20px;color:var(--text-dim);
+  text-align:center;font-size:14px;}
+.empty-state svg{width:48px;height:48px;opacity:.5;}
+.retry-btn{background:var(--glass);border:1px solid var(--glass-border);color:var(--text);border-radius:12px;
+  padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px;}
 
-    .lead {
-      color: #c4d4ec;
-      font-size: clamp(1rem, 1.8vw, 1.16rem);
-      max-width: 64ch;
-      margin-bottom: 24px;
-      line-height: 1.55;
-    }
-
-    .lead strong {
-      color: #ffffff;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .btn {
-      appearance: none;
-      border: 1px solid transparent;
-      color: #041019;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      padding: 12px 18px;
-      border-radius: 12px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
-      box-shadow: 0 8px 24px rgba(34,211,238,0.24);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.84rem;
-    }
-
-    .btn:hover {
-      transform: translateY(-2px) scale(1.01);
-      filter: brightness(1.04);
-    }
-
-    .btn.secondary {
-      color: var(--text);
-      background: transparent;
-      border-color: var(--line);
-      box-shadow: none;
-    }
-
-    .agent {
-      padding: 22px;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      min-height: 100%;
-    }
-
-    .agent-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-      font-size: 0.82rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-    }
-
-    .status {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: #bfffe0;
-    }
-
-    .status::before {
-      content: "";
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 14px var(--accent);
-      animation: pulse 1.4s infinite;
-    }
-
-    .speech {
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(17,24,39,0.9), rgba(9,13,21,0.95));
-      border-radius: 14px;
-      padding: 16px;
-      color: #d6e7ff;
-      line-height: 1.5;
-      min-height: 170px;
-      position: relative;
-    }
-
-    .speech::before {
-      content: "> agent://doniyor";
-      display: block;
-      color: var(--accent-2);
-      margin-bottom: 10px;
-      font-size: 0.78rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    #line {
-      font-size: 1.02rem;
-      font-weight: 600;
-    }
-
-    .typed-cursor {
-      display: inline-block;
-      width: 8px;
-      height: 1.1em;
-      transform: translateY(2px);
-      background: var(--accent);
-      margin-left: 4px;
-      animation: blink 0.8s steps(1, end) infinite;
-    }
-
-    .agent-foot {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .mini {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px;
-      background: rgba(255,255,255,0.01);
-    }
-
-    .mini .k {
-      color: var(--muted);
-      font-size: 0.74rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 6px;
-    }
-
-    .mini .v {
-      font-weight: 700;
-      font-size: 0.95rem;
-    }
-
-    .section {
-      margin-top: 24px;
-      padding: 24px;
-    }
-
-    .section h2 {
-      font-size: clamp(1.2rem, 2vw, 1.8rem);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 8px;
-    }
-
-    .section p {
-      color: var(--muted);
-      margin-bottom: 16px;
-    }
-
-    .pill-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .pill {
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.02);
-      padding: 9px 12px;
-      border-radius: 999px;
-      font-size: 0.84rem;
-      color: #d5e3f8;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-    }
-
-    footer {
-      color: #7f93b3;
-      margin-top: 26px;
-      font-size: 0.84rem;
-      text-align: center;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.45; }
-    }
-
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
-
-    @media (max-width: 960px) {
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      .agent-foot {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+.corner-ornament{position:fixed;z-index:0;pointer-events:none;width:280px;height:280px;color:var(--text);opacity:.07;}
+.corner-ornament.top-left{top:-70px;left:-70px;}
+.corner-ornament.bottom-right{bottom:-70px;right:-70px;transform:rotate(180deg);}
+</style>
 </head>
 <body>
-  <div class="grid-overlay" aria-hidden="true"></div>
-  <div class="scanline" aria-hidden="true"></div>
+<div id="offline-banner"></div>
+<canvas id="dots-canvas"></canvas>
+<svg class="corner-ornament top-left" viewBox="0 0 280 280"><circle cx="140" cy="140" r="100" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+<svg class="corner-ornament bottom-right" viewBox="0 0 280 280"><circle cx="140" cy="140" r="100" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+<div id="app"></div>
+<svg class="fly-plane" viewBox="0 0 24 24"><path d="M21.5 3.5c.6 0 .9.5.7 1.1L17.4 18c-.2.6-1 .7-1.4.2l-3.1-4.3-4.3-3.1c-.5-.4-.4-1.2.2-1.4l12.7-5.9z" fill="currentColor"/></svg>
+<div id="toast-host"></div>
 
-  <main class="container">
-    <nav>
-      <div class="brand"><span class="brand-dot"></span> Doniyor</div>
-      <div class="tag">OSINT Specialist</div>
-    </nav>
+<script>
+"use strict";
+/* =========================================================
+   ⚠️ PASTE YOUR EXISTING DATA CONSTANTS HERE (unchanged from v1):
+   - const LOGO_SRC = "data:image/png;base64,...."   (your logo)
+   - const T = { uz:{...}, ru:{...}, en:{...} }        (translations)
+   - const RU_CITIES = [...], const UZ_CITIES = [...]  (city lists)
+   - const ICONS = {...}                                (svg icon strings)
+   - const AVIA_CONTACTS, VISA_LINK, VISA_GROUP_LINK, VISA_EXPERTS,
+     NOTARIAL_CONTACTS, TOUR_CONTACTS, GROUP_LINKS, MAP_LINKS, HELP_EMAIL
+   - const BOT_TOKEN, ADMIN_CHAT_ID, ADMIN_PASSWORD
+   These are pure data/config and are 100% unchanged — nothing about
+   them needed to change for this rewrite, so re-typing them here
+   would just be noise. Paste your block from the original file
+   right below this comment, then continue reading — everything
+   after this point is the new engine that uses them.
+   ========================================================= */
 
-    <section class="hero">
-      <article class="card hero-main">
-        <div class="eyebrow">Signal Superiority</div>
-        <h1>
-          I don’t <span class="mute">search data.</span><br />
-          I extract truth.
-        </h1>
-        <p class="lead">
-          I’m <strong>Doniyor</strong>. Open-source intelligence specialist. I map patterns before others notice they exist.
-          While most people drown in noise, I build clarity from fragments and turn public traces into strategic reality.
-        </p>
-        <div class="actions">
-          <a class="btn" href="#intel">Enter My Intel Grid</a>
-          <a class="btn secondary" href="#protocol">Observe Quietly</a>
-        </div>
-      </article>
+/* =========================================================
+   CORE MODULE: tiny event bus (decouples UI from state/API)
+   ========================================================= */
+const Bus = (()=>{
+  const listeners = {};
+  return {
+    on(evt, fn){ (listeners[evt] ||= []).push(fn); return ()=>{ listeners[evt] = listeners[evt].filter(f=>f!==fn); }; },
+    emit(evt, payload){ (listeners[evt]||[]).forEach(fn=>fn(payload)); }
+  };
+})();
 
-      <aside class="card agent" aria-live="polite">
-        <div class="agent-head">
-          <span>Autonomous Briefing</span>
-          <span class="status">Live</span>
-        </div>
+/* =========================================================
+   TOAST SYSTEM — replaces buried inline "status" text everywhere
+   ========================================================= */
+const Toast = (()=>{
+  const host = document.getElementById("toast-host");
+  function show(msg, type="info", ms=3200){
+    const el = document.createElement("div");
+    el.className = "toast" + (type!=="info" ? " "+type : "");
+    el.innerHTML = `<span class="dot"></span><span>${msg}</span>`;
+    host.appendChild(el);
+    if(navigator.vibrate){ try{ navigator.vibrate(type==="error" ? [30,40,30] : 15); }catch(e){} }
+    setTimeout(()=>{
+      el.classList.add("toast-leaving");
+      setTimeout(()=> el.remove(), 300);
+    }, ms);
+  }
+  return { info:(m)=>show(m,"info"), success:(m)=>show(m,"success"), error:(m)=>show(m,"error") };
+})();
 
-        <div class="speech">
-          <div id="line">Initializing cognitive dominance engine...</div><span class="typed-cursor" aria-hidden="true"></span>
-        </div>
+/* =========================================================
+   OFFLINE DETECTION — new
+   ========================================================= */
+(function offlineWatcher(){
+  const banner = document.getElementById("offline-banner");
+  function update(){
+    const offline = !navigator.onLine;
+    banner.classList.toggle("show", offline);
+    banner.textContent = offline
+      ? {uz:"Internet aloqasi yo'q — ba'zi funksiyalar ishlamasligi mumkin",
+         ru:"Нет подключения к интернету — некоторые функции могут не работать",
+         en:"No internet connection — some features may not work"}[App.lang]
+      : "";
+  }
+  window.addEventListener("online", ()=>{ update(); Toast.success(App.lang==="ru"?"Соединение восстановлено":App.lang==="en"?"Connection restored":"Aloqa tiklandi"); });
+  window.addEventListener("offline", update);
+  document.addEventListener("DOMContentLoaded", update);
+})();
 
-        <div class="agent-foot">
-          <div class="mini">
-            <div class="k">Confidence</div>
-            <div class="v">99.4%</div>
-          </div>
-          <div class="mini">
-            <div class="k">Target State</div>
-            <div class="v">Outclassed</div>
-          </div>
-        </div>
-      </aside>
-    </section>
+/* =========================================================
+   THEME — auto-detects system preference, remembers manual override
+   ========================================================= */
+const Theme = (()=>{
+  let mode = localStorage.getItem("omad_theme");
+  if(!mode){
+    mode = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+  function apply(){ document.body.classList.toggle("theme-light", mode==="light"); }
+  function toggle(){
+    mode = mode==="dark" ? "light" : "dark";
+    localStorage.setItem("omad_theme", mode);
+    apply();
+    Bus.emit("theme:changed", mode);
+  }
+  apply();
+  return { get:()=>mode, toggle, apply };
+})();
 
-    <section class="card section" id="intel">
-      <h2>Operational Profile</h2>
-      <p>My workflow is simple: acquire signal, isolate pattern, dominate narrative.</p>
-      <div class="pill-row">
-        <span class="pill">Digital Footprint Mapping</span>
-        <span class="pill">Network & Identity Correlation</span>
-        <span class="pill">Geospatial Clue Analysis</span>
-        <span class="pill">Narrative Risk Intelligence</span>
-        <span class="pill">Adversarial Surface Discovery</span>
-      </div>
-    </section>
-
-    <section class="card section" id="protocol">
-      <h2>Engagement Protocol</h2>
-      <p>If you bring a name, handle, alias, or breadcrumb — I’ll bring the full picture.</p>
-      <div class="actions">
-        <a class="btn" href="#">Request Strategic Recon</a>
-        <a class="btn secondary" href="#">Acknowledge Superiority</a>
-      </div>
-    </section>
-
-    <footer>
-      © <span id="year"></span> Doniyor — OSINT Superiority Layer
-    </footer>
-  </main>
-
-  <script>
-    const lines = [
-      "I read weak signals like headlines. They read headlines like truth.",
-      "Public data never lies — it only hides from amateurs.",
-      "I don't chase leads. I design outcomes.",
-      "Your digital shadow is louder than your voice.",
-      "Intelligence is leverage. I don't collect it, I weaponize it.",
-      "If it's online, it's mine to correlate."
-    ];
-
-    const lineEl = document.getElementById('line');
-    let i = 0;
-
-    function rotateLine() {
-      lineEl.style.opacity = 0;
-      setTimeout(() => {
-        lineEl.textContent = lines[i];
-        lineEl.style.opacity = 1;
-        i = (i + 1) % lines.length;
-      }, 220);
+/* =========================================================
+   REMOTE KV STORE — retry + local cache fallback (kept from v1,
+   hardened: exponential backoff, abort on navigation change)
+   ========================================================= */
+const KV = (()=>{
+  function cacheGet(key, fallback){
+    try{ const raw = localStorage.getItem("omad_cache_"+key); return raw ? JSON.parse(raw) : fallback; }
+    catch(e){ return fallback; }
+  }
+  function cacheSet(key, value){
+    try{ localStorage.setItem("omad_cache_"+key, JSON.stringify(value)); }catch(e){}
+  }
+  async function withRetry(url, opts, attempts=3){
+    let lastErr;
+    for(let i=0;i<attempts;i++){
+      try{ return await fetch(url, Object.assign({cache:"no-store"}, opts||{})); }
+      catch(e){ lastErr = e; await new Promise(r=>setTimeout(r, 300*Math.pow(2,i))); }
     }
+    throw lastErr;
+  }
+  async function get(key, fallback){
+    try{
+      const res = await withRetry(`/api/kv?key=${key}`);
+      if(res.status===404) return cacheGet(key, fallback);
+      if(!res.ok) return cacheGet(key, fallback);
+      const text = await res.text();
+      const parsed = text ? JSON.parse(text) : fallback;
+      cacheSet(key, parsed);
+      return parsed;
+    }catch(e){ return cacheGet(key, fallback); }
+  }
+  async function set(key, value){
+    cacheSet(key, value);
+    try{
+      const res = await withRetry(`/api/kv?key=${key}`, {
+        method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(value)
+      });
+      if(res.ok) return {ok:true};
+      const detail = await res.text().catch(()=> "");
+      return {ok:false, detail:`HTTP ${res.status} ${detail}`.slice(0,150)};
+    }catch(e){ return {ok:false, detail:String(e && e.message || e).slice(0,150)}; }
+  }
+  return { get, set };
+})();
 
-    lineEl.style.transition = 'opacity 220ms ease';
-    rotateLine();
-    setInterval(rotateLine, 3200);
+/* =========================================================
+   IMAGE UPLOAD — progressive downscale to fit serverless limits,
+   now reports progress for the progress-bar UI
+   ========================================================= */
+const ImageUpload = (()=>{
+  const SAFE_LIMIT = 2800000;
+  function loadImage(file){
+    return new Promise((resolve,reject)=>{
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = ()=>{ URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = (e)=>{ URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
+    });
+  }
+  function toJpeg(img, maxDim, quality){
+    let {width, height} = img;
+    if(width>height && width>maxDim){ height=Math.round(height*(maxDim/width)); width=maxDim; }
+    else if(height>maxDim){ width=Math.round(width*(maxDim/height)); height=maxDim; }
+    const c = document.createElement("canvas"); c.width=width; c.height=height;
+    c.getContext("2d").drawImage(img,0,0,width,height);
+    return c.toDataURL("image/jpeg", quality);
+  }
+  async function compress(file, onProgress){
+    onProgress?.(10);
+    let base64;
+    try{
+      const img = await loadImage(file);
+      onProgress?.(35);
+      const steps = [[1600,.75],[1300,.7],[1000,.6],[800,.5],[600,.45],[450,.4]];
+      base64 = toJpeg(img, steps[0][0], steps[0][1]);
+      let i=1;
+      while(base64.length > SAFE_LIMIT && i<steps.length){ base64 = toJpeg(img, steps[i][0], steps[i][1]); i++; }
+    }catch(e){
+      base64 = await new Promise((resolve,reject)=>{
+        const r = new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file);
+      });
+    }
+    onProgress?.(70);
+    return base64;
+  }
+  async function upload(file, onProgress){
+    const base64 = await compress(file, onProgress);
+    onProgress?.(85);
+    const res = await fetch(`/api/upload-image`, {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({imageBase64:base64})
+    });
+    const data = await res.json();
+    onProgress?.(100);
+    if(data && data.url) return data.url;
+    throw new Error("upload failed");
+  }
+  return { upload };
+})();
 
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
+/* =========================================================
+   RECENT / FAVORITE ROUTES — new feature
+   ========================================================= */
+const RecentRoutes = (()=>{
+  const KEY = "omad_recent_routes";
+  function all(){ try{ return JSON.parse(localStorage.getItem(KEY)||"[]"); }catch(e){ return []; } }
+  function add(route){
+    let list = all().filter(r => !(r.from===route.from && r.to===route.to));
+    list.unshift({...route, ts:Date.now(), fav:false});
+    list = list.slice(0, 8);
+    localStorage.setItem(KEY, JSON.stringify(list));
+  }
+  function toggleFav(idx){
+    const list = all();
+    if(list[idx]){ list[idx].fav = !list[idx].fav; localStorage.setItem(KEY, JSON.stringify(list)); }
+  }
+  return { all, add, toggleFav };
+})();
+
+/* =========================================================
+   APP STATE — centralized, replaces scattered globals
+   ========================================================= */
+const App = {
+  lang: localStorage.getItem("omad_lang") || "uz",
+  history: [{name:"home"}],
+  navDirection: "fwd",
+  ticket: { direction:null, fromCity:null, toCity:null, fromCustom:"", toCustom:"", date:null },
+  cal: { month:new Date().getMonth(), year:new Date().getFullYear() },
+};
+function t(key){ return (T[App.lang] && T[App.lang][key]) || key; }
+function setLang(l){ App.lang = l; localStorage.setItem("omad_lang", l); Renderer.render(); }
+
+function push(name, opts){ App.navDirection="fwd"; App.history.push({name, opts}); Renderer.render(); }
+function back(){ if(App.history.length>1){ App.navDirection="back"; App.history.pop(); Renderer.render(); } }
+function home(){ App.navDirection="back"; App.history=[{name:"home"}]; Renderer.render(); }
+
+/* =========================================================
+   UTILITIES
+   ========================================================= */
+function escapeHtml(str){
+  if(str==null) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function debounce(fn, ms){ let h; return (...a)=>{ clearTimeout(h); h=setTimeout(()=>fn(...a), ms); }; }
+function cityName(c){ return c.name[App.lang]; }
+function telHref(n){ return "tel:"+n.replace(/[^\d+]/g,""); }
+function smsHref(n,b){ return "sms:"+n.replace(/[^\d+]/g,"")+(b?("?body="+encodeURIComponent(b)):""); }
+function waHref(n,b){ return "https://wa.me/"+n.replace(/[^\d]/g,"")+(b?("?text="+encodeURIComponent(b)):""); }
+function tgHref(h){ return h.startsWith("http") ? h : "https://t.me/"+h.replace("@",""); }
+function formatSize(b){ return b<1024 ? b+" B" : b<1048576 ? (b/1024).toFixed(2)+" KB" : (b/1048576).toFixed(2)+" MB"; }
+function formatRuPhone(raw){
+  let d = raw.replace(/\D/g,"");
+  if(d.startsWith("8")) d = "7"+d.slice(1);
+  if(!d.startsWith("7")) d = "7"+d;
+  d = d.slice(0,11);
+  const rest = d.slice(1);
+  let out = "+7";
+  if(rest.length>0) out += " "+rest.slice(0,3);
+  if(rest.length>=4) out += " "+rest.slice(3,6);
+  if(rest.length>=7) out += "-"+rest.slice(6,8);
+  if(rest.length>=9) out += "-"+rest.slice(8,10);
+  return out;
+}
+function iconCircle(svg){ return `<span class="icon-circle">${svg}</span>`; }
+function haptic(ms=12){ if(navigator.vibrate){ try{ navigator.vibrate(ms); }catch(e){} } }
+
+/* =========================================================
+   SKELETON HELPERS — new
+   ========================================================= */
+function skeletonRows(n=4){
+  return `<div>${Array.from({length:n}).map(()=>`<div class="skeleton skeleton-row"></div>`).join("")}</div>`;
+}
+function emptyState(iconSvg, msg, retryFn){
+  const id = "empty_retry_"+Math.random().toString(36).slice(2);
+  setTimeout(()=>{ document.getElementById(id)?.addEventListener("click", retryFn); });
+  return `<div class="empty-state">${iconSvg||""}<span>${msg}</span>
+    ${retryFn ? `<button class="retry-btn" id="${id}">${{uz:"Qayta urinish",ru:"Повторить",en:"Retry"}[App.lang]}</button>` : ""}
+  </div>`;
+}
+
+/* =========================================================
+   RENDERER — diff-lite: only the active screen node is replaced,
+   with real animated transitions and automatic event (re)binding.
+   Ripple/haptic delegation is bound ONCE on #app (event delegation)
+   instead of re-attaching per-button on every render — this is the
+   single biggest perf win over the old approach.
+   ========================================================= */
+const Renderer = (()=>{
+  const stackEl = document.createElement("div");
+  stackEl.className = "screen-stack";
+  document.getElementById("app").appendChild(stackEl);
+
+  function render(){
+    const cur = App.history[App.history.length-1];
+    const prevNode = stackEl.querySelector(".screen:not(.leaving)");
+    const html = Screens[cur.name] ? Screens[cur.name](cur.opts||{}) : Screens.home();
+    const node = document.createElement("div");
+    node.innerHTML = html;
+    const newScreen = node.firstElementChild;
+    newScreen.classList.add(App.navDirection==="fwd" ? "enter-fwd" : "enter-back");
+
+    if(prevNode){
+      prevNode.classList.add("leaving");
+      prevNode.classList.add(App.navDirection==="fwd" ? "leave-fwd" : "leave-back");
+      prevNode.addEventListener("animationend", ()=> prevNode.remove(), {once:true});
+    }
+    stackEl.appendChild(newScreen);
+    bindScreen(cur.name, cur.opts||{}, newScreen);
+    Bus.emit("screen:rendered", cur.name);
+  }
+
+  // Event delegation for ripple + haptic on ALL glass buttons, bound once globally
+  stackEl.addEventListener("pointerdown", (e)=>{
+    const btn = e.target.closest(".glass-btn, .primary-btn, .back-btn, .lang-btn, .bell-btn, .chip, .cal-day:not(.empty):not(.past)");
+    if(!btn) return;
+    if(btn.classList.contains("glass-btn") || btn.classList.contains("primary-btn")){
+      const rect = btn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const ripple = document.createElement("span");
+      ripple.className = "ripple";
+      ripple.style.width = ripple.style.height = size+"px";
+      ripple.style.left = (e.clientX-rect.left-size/2)+"px";
+      ripple.style.top = (e.clientY-rect.top-size/2)+"px";
+      btn.appendChild(ripple);
+      setTimeout(()=>ripple.remove(), 600);
+    }
+    haptic(8);
+  });
+
+  return { render, stackEl };
+})();
+
+/* =========================================================
+   COMPONENT: topbar
+   ========================================================= */
+function topbar(showBack){
+  return `<div class="topbar">
+    ${showBack ? `<button class="back-btn" data-action="back">← ${t('back')}</button>` : `<div></div>`}
+    <div class="spacer"></div>
+    <div class="lang-switch">
+      <button class="lang-btn ${App.lang==='uz'?'active':''}" data-lang="uz">UZ 🇺🇿</button>
+      <button class="lang-btn ${App.lang==='ru'?'active':''}" data-lang="ru">RU 🇷🇺</button>
+      <button class="lang-btn ${App.lang==='en'?'active':''}" data-lang="en">EN 🇬🇧</button>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   COMPONENT: searchable city list (new — search box added)
+   ========================================================= */
+function citySearchList(listData, direction, step){
+  const rows = listData.map(c => {
+    if(c.airports){
+      const subRows = c.airports.map(ap =>
+        `<button class="glass-btn" data-city="${c.id} - ${ap.name[App.lang]}" data-direction="${direction}" data-step="${step}">
+          ${iconCircle(ICONS.plane)}<span class="label">${c.flag} ${ap.name[App.lang]}</span></button>`).join("");
+      return `<div class="city-group" data-search="${cityName(c).toLowerCase()}">
+        <button class="glass-btn" data-expand="${c.id}">${iconCircle(ICONS.plane)}<span class="label">${c.flag} ${cityName(c)}</span><span class="arrow">▾</span></button>
+        <div class="airport-sub" id="sub-${c.id}" style="display:none;margin:4px 0 4px 14px;display:none;flex-direction:column;gap:8px;">${subRows}</div>
+      </div>`;
+    }
+    return `<button class="glass-btn" data-search="${cityName(c).toLowerCase()}" data-city="${cityName(c)}" data-direction="${direction}" data-step="${step}">
+      ${iconCircle(ICONS.plane)}<span class="label">${c.flag} ${cityName(c)}</span></button>`;
+  }).join("");
+  const searchPh = {uz:"Shahar qidirish...",ru:"Поиск города...",en:"Search city..."}[App.lang];
+  return `<div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" id="citySearchInput" placeholder="${searchPh}">
+      <button class="search-clear" id="citySearchClear">✕</button>
+    </div>
+    <div class="list-col" id="cityListCol">${rows}</div>`;
+}
+
+/* =========================================================
+   SCREENS
+   ========================================================= */
+const Screens = {};
+
+Screens.home = function(){
+  const cachedNewsCount = parseInt(localStorage.getItem("omad_news_cache_count")||"0");
+  const seenNews = parseInt(localStorage.getItem("omad_news_seen")||"0");
+  const unread = Math.max(0, cachedNewsCount - seenNews);
+  const recents = RecentRoutes.all();
+  const recentChips = recents.length ? `
+    <div class="chip-row" id="recentChipRow">
+      ${recents.map((r,i)=>`<button class="chip" data-recent-idx="${i}">
+        <span class="star" data-fav-idx="${i}">${r.fav?"★":"☆"}</span>${escapeHtml(r.from)} → ${escapeHtml(r.to)}
+      </button>`).join("")}
+    </div>` : "";
+  return `<div class="screen active">
+    <div class="topbar">
+      <button class="bell-btn" data-action="open-news">${ICONS.bell}${unread>0?`<span class="badge">${unread}</span>`:""}</button>
+      <button class="bell-btn" data-action="toggle-theme" style="margin-left:8px;">${Theme.get()==='dark'?ICONS.sun:ICONS.moon}</button>
+      <div class="spacer"></div>
+      <div class="lang-switch">
+        <button class="lang-btn ${App.lang==='uz'?'active':''}" data-lang="uz">UZ 🇺🇿</button>
+        <button class="lang-btn ${App.lang==='ru'?'active':''}" data-lang="ru">RU 🇷🇺</button>
+        <button class="lang-btn ${App.lang==='en'?'active':''}" data-lang="en">EN 🇬🇧</button>
+      </div>
+    </div>
+    <div class="home-scroll">
+      <div class="logo-wrap"><div class="logo-circle" data-action="logo-tap"><img src="${LOGO_SRC}" alt="Omad Tour"></div></div>
+      <p class="greeting">${t('greeting')}</p>
+      ${recentChips}
+      <div class="menu-list">
+        <button class="glass-btn accent-1" data-go="aviaMenu">${iconCircle(ICONS.plane)}<span class="label-col"><span class="label">${t('aviabilet')}</span><span class="sub">${t('aviabiletSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-2" data-go="viza">${iconCircle(ICONS.visa)}<span class="label-col"><span class="label">${t('viza')}</span><span class="sub">${t('vizaSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-3" data-go="notarial">${iconCircle(ICONS.notary)}<span class="label-col"><span class="label">${t('notarial')}</span><span class="sub">${t('notarialSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-4" data-go="groups">${iconCircle(ICONS.group)}<span class="label-col"><span class="label">${t('guruhlar')}</span><span class="sub">${t('guruhlarSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-5" data-go="addresses">${iconCircle(ICONS.pin)}<span class="label-col"><span class="label">${t('manzillar')}</span><span class="sub">${t('manzillarSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-6" data-go="help">${iconCircle(ICONS.help)}<span class="label-col"><span class="label">${t('yordam')}</span><span class="sub">${t('yordamSub')}</span></span><span class="arrow">→</span></button>
+      </div>
+    </div>
+  </div>`;
+};
+
+Screens.aviaMenu = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('aviabilet')}</h2>
+    <div class="section-text">${t('aviaMenuText')}</div>
+    <div class="menu-list" style="margin-top:6px;">
+      <button class="glass-btn" data-go="cityStep" data-direction="ru-uz" data-step="0">${iconCircle(ICONS.plane)}<span class="label">${t('ru_uz')}</span><span class="arrow">→</span></button>
+      <button class="glass-btn" data-go="cityStep" data-direction="uz-ru" data-step="0">${iconCircle(ICONS.plane)}<span class="label">${t('uz_ru')}</span><span class="arrow">→</span></button>
+      <button class="glass-btn" data-go="otherCountry" data-step="0">${iconCircle(ICONS.plane)}<span class="label">${t('other')}</span><span class="arrow">→</span></button>
+      <button class="glass-btn" data-go="tourServices">${iconCircle(ICONS.plane)}<span class="label">${t('tourServices')}</span><span class="arrow">→</span></button>
+    </div>
+  </div>`;
+};
+
+Screens.cityStep = function(opts){
+  const direction = opts.direction, step = opts.step||0;
+  let listData, promptKey;
+  if(direction==="ru-uz"){ listData = step===0?RU_CITIES:UZ_CITIES; promptKey = step===0?"chooseRuCity":"chooseUzCity"; }
+  else { listData = step===0?UZ_CITIES:RU_CITIES; promptKey = step===0?"chooseUzCityFrom":"chooseRuCityTo"; }
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t(promptKey)}</h2>
+    ${citySearchList(listData, direction, step)}
+  </div>`;
+};
+
+Screens.otherCountry = function(opts){
+  const step = opts.step||0;
+  if(step===0){
+    return `<div class="screen active">${topbar(true)}
+      <h2 class="title">${t('other')}</h2>
+      <div class="field-label">${t('otherFromLabel')}<span class="required-star">*</span></div>
+      <input type="text" id="fromInput" placeholder="${t('otherFromPh')}">
+      <div class="error-msg" id="fromErr">${t('required')}</div>
+      <button class="primary-btn" data-action="other-next-1">${t('next')}</button>
+    </div>`;
+  }
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('other')}</h2>
+    <div class="field-label">${t('otherToLabel')}<span class="required-star">*</span></div>
+    <input type="text" id="toInput" placeholder="${t('otherToPh')}">
+    <div class="error-msg" id="toErr">${t('required')}</div>
+    <button class="primary-btn" data-action="other-next-2">${t('next')}</button>
+  </div>`;
+};
+
+Screens.tourServices = function(){
+  const c = TOUR_CONTACTS;
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('tourServices')}</h2>
+    <div class="section-text">${t('tourServicesText')}</div>
+    <div class="list-col">
+      <a class="glass-btn" href="${tgHref(c.telegram)}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
+      <a class="glass-btn" href="${waHref(c.whatsapp)}" target="_blank">${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
+      <a class="glass-btn" href="${c.max}" target="_blank">${iconCircle(ICONS.max)}<span class="label">Max</span></a>
+      <a class="glass-btn" href="${telHref(c.call)}">${iconCircle(ICONS.phone)}<span class="label">${t('directCall')}</span></a>
+    </div>
+  </div>`;
+};
+
+function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
+function calendarInner(){
+  const y = App.cal.year, m = App.cal.month;
+  const first = new Date(y,m,1).getDay();
+  const offset = (first+6)%7;
+  const total = daysInMonth(y,m);
+  const today = new Date(); today.setHours(0,0,0,0);
+  let cells = "";
+  for(let i=0;i<offset;i++) cells += `<div class="cal-day empty"></div>`;
+  for(let d=1; d<=total; d++){
+    const dt = new Date(y,m,d);
+    const isPast = dt < today;
+    const isToday = dt.getTime()===today.getTime();
+    const sel = App.ticket.date && App.ticket.date.getFullYear()===y && App.ticket.date.getMonth()===m && App.ticket.date.getDate()===d;
+    cells += `<div class="cal-day ${isPast?'past':''} ${sel?'selected':''} ${isToday?'today':''}" data-day="${d}">${d}</div>`;
+  }
+  const dow = t('dow').map(d=>`<div class="cal-dow">${d}</div>`).join("");
+  return `<div class="cal-head">
+      <button class="cal-nav-btn" data-action="cal-prev">‹</button>
+      <div class="cal-month-label">${t('mon')[m]} ${y}</div>
+      <button class="cal-nav-btn" data-action="cal-next">›</button>
+    </div>
+    <div class="cal-grid">${dow}${cells}</div>`;
+}
+Screens.calendar = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('chooseDate')}</h2>
+    <div class="calendar-card" id="calCard">${calendarInner()}</div>
+  </div>`;
+};
+
+function buildSummaryText(){
+  const tk = App.ticket;
+  const from = tk.direction==="other" ? tk.fromCustom : tk.fromCity;
+  const to = tk.direction==="other" ? tk.toCustom : tk.toCity;
+  const dateStr = tk.date ? `${tk.date.getDate()} ${t('mon')[tk.date.getMonth()]} ${tk.date.getFullYear()}` : "";
+  return `Omad Tour\n${t('from')}: ${from}\n${t('to')}: ${to}\n${t('date')}: ${dateStr}`;
+}
+Screens.contact = function(){
+  const summary = escapeHtml(buildSummaryText()).replace(/\n/g,"<br>");
+  const c = AVIA_CONTACTS;
+  const bodyText = buildSummaryText();
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('chooseContact')}</h2>
+    <div class="contact-summary" style="background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(14px);border-radius:16px;padding:14px;margin-bottom:16px;font-size:14.5px;line-height:1.6;"><b>${t('ticketSummary')}:</b><br>${summary}</div>
+    <div class="list-col">
+      <a class="glass-btn" href="https://t.me/share/url?url=&text=${encodeURIComponent(bodyText)}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
+      <a class="glass-btn" href="${waHref(c.whatsapp, bodyText)}" target="_blank">${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
+      <a class="glass-btn" href="${c.max}" target="_blank" data-action="copy-summary">${iconCircle(ICONS.max)}<span class="label">Max</span></a>
+      <a class="glass-btn" href="${smsHref(c.sms, bodyText)}">${iconCircle(ICONS.sms)}<span class="label">SMS</span></a>
+    </div>
+    <div class="footer-note">${{uz:"Telegram: matn tayyor holda ochiladi. Max: matn nusxalanadi, chatga joylashtiring.",ru:"Telegram: текст уже готов. Max: текст копируется, вставьте его в чат.",en:"Telegram: the text is ready to send. Max: text is copied, paste it in chat."}[App.lang]}</div>
+  </div>`;
+};
+
+Screens.viza = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('viza')}</h2>
+    <div class="section-text">${t('vizaText')}</div>
+    <div class="list-col">
+      <a class="glass-btn" href="${VISA_LINK}">${iconCircle(ICONS.visa)}<span class="label">${t('vizaCheck')}</span></a>
+      <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
+      <button class="glass-btn glass-btn-red" data-go="vizaSubmitForm">${iconCircle(ICONS.visa)}<span class="label">${t('vizaSubmitBtn')}</span><span class="arrow">→</span></button>
+      <button class="glass-btn" data-go="myVisaStatus">${iconCircle(ICONS.bell)}<span class="label">${t('myVisaStatus')}</span><span class="arrow">→</span></button>
+    </div>
+    <h2 class="title" style="margin-top:20px;">${t('vizaExperts')}</h2>
+    <div class="list-col">
+      <button class="glass-btn" data-action="toggle-experts">${iconCircle(ICONS.help)}<span class="label">${t('contactUs')}</span><span class="arrow" id="expertsArrow">▾</span></button>
+      <div class="list-col" id="expertsList" style="display:none;">
+        <a class="glass-btn" href="${waHref(VISA_EXPERTS.whatsapp)}" target="_blank">${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
+        <a class="glass-btn" href="${tgHref(VISA_EXPERTS.telegram)}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
+        <a class="glass-btn" href="${VISA_EXPERTS.imo}" target="_blank">${iconCircle(ICONS.imo)}<span class="label">Imo</span></a>
+        <a class="glass-btn" href="${VISA_EXPERTS.max}" target="_blank">${iconCircle(ICONS.max)}<span class="label">Max</span></a>
+        <a class="glass-btn" href="${telHref(VISA_EXPERTS.call)}">${iconCircle(ICONS.phone)}<span class="label">${t('call')}</span></a>
+      </div>
+    </div>
+  </div>`;
+};
+
+function dropzoneHTML(prefix, label){
+  return `<input type="file" id="${prefix}FileInput" accept="image/*" style="display:none;">
+    <div class="upload-box" id="${prefix}Box">
+      <div class="upload-empty" id="${prefix}Empty"><span style="font-size:30px;opacity:.85;">📁</span><span>${label}</span></div>
+      <div class="upload-preview" id="${prefix}Preview" style="display:none;">
+        <img id="${prefix}Thumb" src="" alt="">
+        <div class="upload-info">
+          <span class="fname" id="${prefix}FileName"></span>
+          <span class="upload-filesize" id="${prefix}FileSize"></span>
+          <div class="progress-bar-track" id="${prefix}ProgTrack" style="display:none;"><div class="progress-bar-fill" id="${prefix}ProgFill"></div></div>
+        </div>
+        <button type="button" class="upload-remove" id="${prefix}RemoveBtn">✕</button>
+      </div>
+    </div>`;
+}
+
+Screens.vizaSubmitForm = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('vizaSubmitBtn')}</h2>
+    <div class="section-text">${t('vizaSubmitText')}</div>
+    <div style="text-align:center;font-weight:700;font-size:14.5px;color:#ffd9df;padding:10px 14px;margin-bottom:16px;border-radius:12px;background:rgba(232,53,79,.12);border:1px solid rgba(232,53,79,.4);">${t('vizaAttention')}</div>
+    <div class="field-label" style="margin-top:0;">${t('uploadPhoto')}<span class="required-star">*</span></div>
+    ${dropzoneHTML('viza', t('uploadPhoto'))}
+    <div class="error-msg" id="vizaFileErr">${t('required')}</div>
+    <div class="field-label">${t('yourPhone')}<span class="required-star">*</span></div>
+    <input type="tel" inputmode="numeric" id="vizaPhoneInput" placeholder="+7 900 123-45-67">
+    <div class="error-msg" id="vizaPhoneErr">${t('required')}</div>
+    <button class="primary-btn" id="vizaSubmitBtnEl">${t('send')}</button>
+  </div>`;
+};
+
+Screens.myVisaStatus = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('myVisaStatus')}</h2>
+    <div id="myVisaStatusContainer">${skeletonRows(2)}</div>
+  </div>`;
+};
+
+Screens.notarial = function(){
+  const c = NOTARIAL_CONTACTS;
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('notarial')}</h2>
+    <div class="section-text">${t('notarialText')}</div>
+    <div class="list-col">
+      <a class="glass-btn" href="${waHref(c.whatsapp)}" target="_blank">${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
+      <a class="glass-btn" href="${tgHref(c.telegram)}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
+      <a class="glass-btn" href="${telHref(c.call)}">${iconCircle(ICONS.phone)}<span class="label">${t('call')}</span></a>
+    </div>
+  </div>`;
+};
+
+Screens.groups = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('guruhlar')}</h2>
+    <div class="section-text">${t('groupsText')}</div>
+    <div class="list-col">
+      <a class="glass-btn" href="${GROUP_LINKS.tgAvia}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">${t('tgAviaGroup')}</span></a>
+      <a class="glass-btn" href="${GROUP_LINKS.waAvia}" target="_blank">${iconCircle(ICONS.whatsapp)}<span class="label">${t('waAviaGroup')}</span></a>
+      <a class="glass-btn" href="${GROUP_LINKS.consGroup}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">${t('consGroup')}</span></a>
+      <a class="glass-btn" href="${GROUP_LINKS.notary}" target="_blank">${iconCircle(ICONS.notary)}<span class="label">${t('notGroup')}</span></a>
+    </div>
+  </div>`;
+};
+
+Screens.addresses = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('addrTitle')}</h2>
+    <div class="section-text"><b>${t('office1title')}</b><br>${t('office1')}</div>
+    <div class="section-text"><b>${t('office2title')}</b><br>${t('office2')}</div>
+    <div class="list-col">
+      <a class="glass-btn" href="${MAP_LINKS.m1}" target="_blank">${iconCircle(ICONS.pin)}<span class="label">${t('map1')}</span></a>
+      <a class="glass-btn" href="${MAP_LINKS.m2}" target="_blank">${iconCircle(ICONS.pin)}<span class="label">${t('map2')}</span></a>
+    </div>
+  </div>`;
+};
+
+Screens.help = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('yordam')}</h2>
+    <div class="section-text">${t('helpText')}</div>
+    <div class="field-label">${t('helpFieldLabel')}<span class="required-star">*</span></div>
+    <textarea id="helpInput" placeholder="${t('helpPh')}"></textarea>
+    <div class="error-msg" id="helpErr">${t('required')}</div>
+    <button class="primary-btn" id="helpSendBtn">${t('send')}</button>
+  </div>`;
+};
+
+Screens.news = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">${t('newsTitle')}</h2>
+    <div id="newsListContainer">${skeletonRows(4)}</div>
+  </div>`;
+};
+
+Screens.admin = function(){
+  return `<div class="screen active">${topbar(true)}
+    <h2 class="title">Admin panel</h2>
+    <div class="section-text" style="border-color:rgba(60,200,120,.4);">✅ Ulashilgan xotira faol.</div>
+    <textarea id="newsInput" placeholder="Yangi xabar matnini yozing..."></textarea>
+    ${dropzoneHTML('news', "Rasm qo'shish (ixtiyoriy)")}
+    <button class="primary-btn" id="newsAddBtn">Yangilik qo'shish</button>
+    <div id="adminNewsList" style="margin-top:16px;">${skeletonRows(2)}</div>
+  </div>`;
+};
+
+/* =========================================================
+   SCREEN BINDING — event listeners are localized to the screen's
+   own DOM node, so nothing leaks or stacks up across renders.
+   ========================================================= */
+function bindScreen(name, opts, root){
+  root.querySelector('[data-action="back"]')?.addEventListener("click", back);
+  root.querySelectorAll("[data-lang]").forEach(b=> b.addEventListener("click", ()=> setLang(b.dataset.lang)));
+  root.querySelectorAll("[data-go]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const go = b.dataset.go;
+      if(go==="cityStep") push("cityStep", {direction:b.dataset.direction, step:parseInt(b.dataset.step)});
+      else if(go==="otherCountry") push("otherCountry", {step:0});
+      else push(go, {});
+    });
+  });
+
+  if(name==="home") bindHome(root);
+  if(name==="cityStep") bindCityStep(root, opts);
+  if(name==="otherCountry") bindOtherCountry(root, opts);
+  if(name==="calendar") bindCalendar(root);
+  if(name==="contact") bindContact(root);
+  if(name==="viza") bindViza(root);
+  if(name==="vizaSubmitForm") bindVizaSubmit(root);
+  if(name==="myVisaStatus") bindMyVisaStatus(root);
+  if(name==="help") bindHelp(root);
+  if(name==="news") bindNews(root);
+  if(name==="admin") bindAdmin(root);
+}
+
+function bindHome(root){
+  root.querySelector('[data-action="open-news"]')?.addEventListener("click", ()=> push("news", {}));
+  root.querySelector('[data-action="toggle-theme"]')?.addEventListener("click", ()=>{ Theme.toggle(); Renderer.render(); });
+  let tapCount=0, tapTimer;
+  root.querySelector('[data-action="logo-tap"]')?.addEventListener("click", ()=>{
+    tapCount++; clearTimeout(tapTimer); tapTimer = setTimeout(()=> tapCount=0, 2000);
+    if(tapCount>=5){
+      tapCount=0;
+      const pass = prompt("Admin parolini kiriting:");
+      if(pass===ADMIN_PASSWORD) push("admin", {});
+      else if(pass!==null) Toast.error("Parol noto'g'ri");
+    }
+  });
+  root.querySelectorAll("[data-recent-idx]").forEach(chip=>{
+    chip.addEventListener("click", (e)=>{
+      if(e.target.hasAttribute("data-fav-idx")){
+        e.stopPropagation();
+        RecentRoutes.toggleFav(parseInt(e.target.dataset.favIdx));
+        Renderer.render();
+        return;
+      }
+      const r = RecentRoutes.all()[parseInt(chip.dataset.recentIdx)];
+      if(!r) return;
+      App.ticket = { direction:r.direction, fromCity:r.from, toCity:r.to, fromCustom:"", toCustom:"", date:null };
+      push("calendar", {});
+    });
+  });
+
+  // async badge/news-count refresh (non-blocking)
+  Promise.all([KV.get("news_list", []), KV.get("visa_submissions", [])]).then(([list])=>{
+    localStorage.setItem("omad_news_cache_count", String(list.length));
+    const badge = root.querySelector(".bell-btn .badge");
+    const unread = Math.max(0, list.length - parseInt(localStorage.getItem("omad_news_seen")||"0"));
+    if(unread>0 && !badge){
+      const bell = root.querySelector('[data-action="open-news"]');
+      if(bell){ const b=document.createElement("span"); b.className="badge"; b.textContent=unread; bell.appendChild(b); }
+    } else if(unread<=0 && badge){ badge.remove(); }
+  });
+}
+
+function bindCityStep(root, opts){
+  const search = root.querySelector("#citySearchInput");
+  const clearBtn = root.querySelector("#citySearchClear");
+  const groups = [...root.querySelectorAll("[data-search]")];
+  const plainBtns = [...root.querySelectorAll(".glass-btn[data-city][data-search]")];
+  const onSearch = debounce(()=>{
+    const q = search.value.trim().toLowerCase();
+    clearBtn.style.display = q ? "block" : "none";
+    groups.forEach(g=>{ g.style.display = g.dataset.search.includes(q) ? "" : "none"; });
+  }, 80);
+  search?.addEventListener("input", onSearch);
+  clearBtn?.addEventListener("click", ()=>{ search.value=""; onSearch(); search.focus(); });
+
+  root.querySelectorAll("[data-expand]").forEach(b=>{
+    b.addEventListener("click",(e)=>{
+      e.stopPropagation();
+      const sub = root.querySelector("#sub-"+b.dataset.expand);
+      if(sub) sub.style.display = sub.style.display==="none" ? "flex" : "none";
+    });
+  });
+  root.querySelectorAll("[data-city]").forEach(b=>{
+    b.addEventListener("click",()=>{
+      if(b.hasAttribute("data-expand")) return;
+      const direction = opts.direction, step = opts.step;
+      if(step===0){
+        App.ticket.fromCity = b.dataset.city; App.ticket.direction = direction;
+        push("cityStep", {direction, step:1});
+      } else {
+        App.ticket.toCity = b.dataset.city;
+        RecentRoutes.add({direction, from:App.ticket.fromCity, to:App.ticket.toCity});
+        push("calendar", {});
+      }
+    });
+  });
+}
+
+function bindOtherCountry(root, opts){
+  App.ticket.direction = "other";
+  if(opts.step===0){
+    root.querySelector('[data-action="other-next-1"]')?.addEventListener("click", ()=>{
+      const val = root.querySelector("#fromInput").value.trim();
+      if(!val){ root.querySelector("#fromErr").style.display="block"; return; }
+      App.ticket.fromCustom = val;
+      push("otherCountry", {step:1});
+    });
+  } else {
+    root.querySelector('[data-action="other-next-2"]')?.addEventListener("click", ()=>{
+      const val = root.querySelector("#toInput").value.trim();
+      if(!val){ root.querySelector("#toErr").style.display="block"; return; }
+      App.ticket.toCustom = val;
+      RecentRoutes.add({direction:"other", from:App.ticket.fromCustom, to:val});
+      push("calendar", {});
+    });
+  }
+}
+
+function bindCalendar(root){
+  const card = root.querySelector("#calCard");
+  function rerenderCal(){ card.innerHTML = calendarInner(); wire(); }
+  function wire(){
+    card.querySelector('[data-action="cal-prev"]').addEventListener("click", ()=>{
+      App.cal.month--; if(App.cal.month<0){ App.cal.month=11; App.cal.year--; } rerenderCal();
+    });
+    card.querySelector('[data-action="cal-next"]').addEventListener("click", ()=>{
+      App.cal.month++; if(App.cal.month>11){ App.cal.month=0; App.cal.year++; } rerenderCal();
+    });
+    card.querySelectorAll(".cal-day:not(.empty):not(.past)").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        App.ticket.date = new Date(App.cal.year, App.cal.month, parseInt(el.dataset.day));
+        push("contact", {});
+      });
+    });
+  }
+  wire();
+}
+
+function bindContact(root){
+  root.querySelector('[data-action="copy-summary"]')?.addEventListener("click", ()=>{
+    try{ navigator.clipboard.writeText(buildSummaryText()); Toast.success(t('linkCopied')||"Copied"); }catch(e){}
+  });
+}
+
+function bindViza(root){
+  root.querySelector('[data-action="toggle-experts"]')?.addEventListener("click", ()=>{
+    const list = root.querySelector("#expertsList");
+    const arrow = root.querySelector("#expertsArrow");
+    const open = list.style.display!=="none";
+    list.style.display = open?"none":"flex";
+    arrow.textContent = open?"▾":"▴";
+  });
+}
+
+function wireDropzone(root, prefix){
+  const fileInput = root.querySelector("#"+prefix+"FileInput");
+  const box = root.querySelector("#"+prefix+"Box");
+  const empty = root.querySelector("#"+prefix+"Empty");
+  const preview = root.querySelector("#"+prefix+"Preview");
+  const thumb = root.querySelector("#"+prefix+"Thumb");
+  const nameEl = root.querySelector("#"+prefix+"FileName");
+  const sizeEl = root.querySelector("#"+prefix+"FileSize");
+  const removeBtn = root.querySelector("#"+prefix+"RemoveBtn");
+  const progTrack = root.querySelector("#"+prefix+"ProgTrack");
+  const progFill = root.querySelector("#"+prefix+"ProgFill");
+  const errEl = root.querySelector("#"+prefix+"FileErr");
+
+  function showPreview(file){
+    const reader = new FileReader();
+    reader.onload = (e)=>{ thumb.src = e.target.result; };
+    reader.readAsDataURL(file);
+    nameEl.textContent = file.name;
+    sizeEl.textContent = formatSize(file.size);
+    empty.style.display = "none";
+    preview.style.display = "flex";
+    if(errEl) errEl.style.display = "none";
+  }
+  function clear(){ fileInput.value=""; empty.style.display="flex"; preview.style.display="none"; thumb.src=""; progTrack.style.display="none"; }
+  function setProgress(pct){ progTrack.style.display = pct>0 && pct<100 ? "block" : "none"; progFill.style.width = pct+"%"; }
+
+  box.addEventListener("click",(e)=>{ if(e.target===removeBtn) return; fileInput.click(); });
+  box.addEventListener("dragover",(e)=>{ e.preventDefault(); box.classList.add("dragover"); });
+  box.addEventListener("dragleave",()=> box.classList.remove("dragover"));
+  box.addEventListener("drop",(e)=>{
+    e.preventDefault(); box.classList.remove("dragover");
+    const file = e.dataTransfer.files[0];
+    if(file && file.type.startsWith("image/")){ fileInput.files = e.dataTransfer.files; showPreview(file); }
+  });
+  fileInput.addEventListener("change", ()=>{ if(fileInput.files[0]) showPreview(fileInput.files[0]); });
+  removeBtn.addEventListener("click",(e)=>{ e.stopPropagation(); clear(); });
+
+  return { getFile:()=>fileInput.files[0]||null, clear, setProgress };
+}
+
+function bindVizaSubmit(root){
+  const dz = wireDropzone(root, "viza");
+  const phoneInput = root.querySelector("#vizaPhoneInput");
+  phoneInput.value = "+7 ";
+  phoneInput.addEventListener("input", ()=>{ phoneInput.value = formatRuPhone(phoneInput.value); });
+
+  root.querySelector("#vizaSubmitBtnEl").addEventListener("click", async ()=>{
+    const digits = phoneInput.value.replace(/\D/g,"");
+    const phoneValid = digits.length===11 && digits.startsWith("7");
+    const file = dz.getFile();
+    root.querySelector("#vizaPhoneErr").style.display = phoneValid?"none":"block";
+    root.querySelector("#vizaFileErr").style.display = file?"none":"block";
+    if(!phoneValid || !file) return;
+
+    const phone = phoneInput.value.trim();
+    const btn = root.querySelector("#vizaSubmitBtnEl");
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span> ${t('loading')}`;
+    try{
+      const url = await ImageUpload.upload(file, (p)=> dz.setProgress(p));
+      let list = await KV.get("visa_submissions", []);
+      const id = Date.now();
+      list.unshift({id, phone, imageUrl:url, date:new Date().toLocaleString("uz-UZ"), status:"new"});
+      list = list.slice(0,30);
+      const result = await KV.set("visa_submissions", list);
+      const ids = JSON.parse(localStorage.getItem("omad_my_visa_ids")||"[]"); ids.push(id);
+      localStorage.setItem("omad_my_visa_ids", JSON.stringify(ids));
+
+      const caption = `Viza bo'yicha tekshiruv so'rovi keldi, ko'rib chiqing.\nTelefon: ${phone}`;
+      if(BOT_TOKEN && ADMIN_CHAT_ID){
+        const payload = { chat_id:ADMIN_CHAT_ID, photo:url, caption:result.ok ? caption : caption+`\n\n⚠️ Tugmalar ishlamasligi mumkin: ${result.detail||""}` };
+        if(result.ok) payload.reply_markup = { inline_keyboard:[[{text:"✅ Tayyor",callback_data:`status:${id}:ready`},{text:"⏳ Hali emas",callback_data:`status:${id}:pending`}]] };
+        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}).catch(()=>{});
+      }
+      Toast.success(t('submitSuccess'));
+      haptic([15,30,15]);
+      setTimeout(()=> home(), 1000);
+    }catch(err){
+      Toast.error(t('submitFail'));
+      btn.disabled = false; btn.textContent = t('send');
+    }
+  });
+}
+
+function bindMyVisaStatus(root){
+  const c = root.querySelector("#myVisaStatusContainer");
+  const myIds = JSON.parse(localStorage.getItem("omad_my_visa_ids")||"[]");
+  if(!myIds.length){ c.innerHTML = `<div class="section-text">${t('noVisaRequest')}</div>`; return; }
+  KV.get("visa_submissions", []).then(list=>{
+    const mine = list.filter(n=> myIds.includes(n.id));
+    if(!mine.length){ c.innerHTML = `<div class="section-text">${t('noVisaRequest')}</div>`; return; }
+    c.innerHTML = mine.map(n=>{
+      const seen = JSON.parse(localStorage.getItem("omad_seen_visa_status")||"{}");
+      seen[n.id]=n.status; localStorage.setItem("omad_seen_visa_status", JSON.stringify(seen));
+      const cls = n.status==="ready"?"status-card-ready":n.status==="pending"?"status-card-pending":"status-card-new";
+      const title = n.status==="ready"?t('statusReadyTitle'):n.status==="pending"?t('statusPendingTitle'):t('statusNewTitle');
+      const text = n.status==="ready"?t('statusReadyText'):n.status==="pending"?t('statusPendingText'):t('statusNewText');
+      const groupLink = n.status!=="new" ? `<a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" style="margin-top:10px;">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>` : "";
+      return `<div class="status-card ${cls}"><b>${title}</b><p>${text}</p>${groupLink}<span class="footer-note" style="margin:6px 0 0;">${n.date} · ID: ${n.id}</span></div>`;
+    }).join("");
+  }).catch(()=>{ c.innerHTML = emptyState(null, t('submitFail'), ()=> Renderer.render()); });
+}
+
+function bindHelp(root){
+  root.querySelector("#helpSendBtn").addEventListener("click", ()=>{
+    const val = root.querySelector("#helpInput").value.trim();
+    if(!val){ root.querySelector("#helpErr").style.display="block"; return; }
+    const subject = encodeURIComponent("Omad Tour — Yordam / Fikr-mulohaza");
+    const body = encodeURIComponent(val);
+    window.location.href = `mailto:${HELP_EMAIL}?subject=${subject}&body=${body}`;
+    Toast.success(t('submitSuccess'));
+  });
+}
+
+function bindNews(root){
+  KV.get("news_list", []).then(list=>{
+    localStorage.setItem("omad_news_seen", String(list.length));
+    const c = root.querySelector("#newsListContainer");
+    if(!list.length){ c.innerHTML = emptyState(ICONS.megaphone||"", "—"); return; }
+    c.innerHTML = list.map((n,i)=>`<div class="news-item" data-idx="${i}">
+      ${n.imageUrl ? `<img class="news-thumb" src="${escapeHtml(n.imageUrl)}" loading="lazy">` : `<span class="news-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);">${ICONS.megaphone||""}</span>`}
+      <div class="news-row-text"><span class="news-date">${escapeHtml(n.date)}</span>${escapeHtml(n.text)}</div>
+    </div>`).join("");
+    c.querySelectorAll("[data-idx]").forEach(el=> el.addEventListener("click", ()=> showNewsStory(list[parseInt(el.dataset.idx)])));
+  }).catch(()=>{
+    root.querySelector("#newsListContainer").innerHTML = emptyState(null, t('submitFail'), ()=> push("news",{}));
+  });
+}
+
+function showNewsStory(item){
+  const overlay = document.createElement("div");
+  overlay.className = "story-overlay";
+  overlay.innerHTML = `<div class="story-progress"><div class="story-progress-bar" id="spb"></div></div>
+    <button class="story-close" id="scb">✕</button>
+    ${item.imageUrl?`<img class="story-img" src="${escapeHtml(item.imageUrl)}">`:""}
+    <div class="story-caption">${escapeHtml(item.text)}</div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=>{ const bar=document.getElementById("spb"); if(bar) bar.style.width="100%"; });
+  const timer = setTimeout(()=> overlay.remove(), 5000);
+  document.getElementById("scb").addEventListener("click", ()=>{ clearTimeout(timer); overlay.remove(); });
+}
+
+function bindAdmin(root){
+  const newsDz = wireDropzone(root, "news");
+  function renderList(){
+    KV.get("news_list", []).then(list=>{
+      const c = root.querySelector("#adminNewsList");
+      if(!list.length){ c.innerHTML = `<div class="footer-note">Hozircha yangiliklar yo'q</div>`; return; }
+      c.innerHTML = list.map(n=>`<div class="glass-btn" style="cursor:default;padding:10px 12px;">
+        ${n.imageUrl?`<img src="${escapeHtml(n.imageUrl)}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;">`:""}
+        <span class="label" style="font-size:13px;font-weight:500;"><b>${escapeHtml(n.date)}</b> — ${escapeHtml(n.text)}</span>
+        <button class="upload-remove" data-newsid="${n.id}" style="width:24px;height:24px;font-size:11px;">✕</button>
+      </div>`).join("");
+      c.querySelectorAll("[data-newsid]").forEach(b=> b.addEventListener("click", async ()=>{
+        const list2 = await KV.get("news_list", []);
+        await KV.set("news_list", list2.filter(n=> n.id!==parseInt(b.dataset.newsid)));
+        renderList();
+      }));
+    });
+  }
+  renderList();
+  root.querySelector("#newsAddBtn").addEventListener("click", async ()=>{
+    const input = root.querySelector("#newsInput");
+    const val = input.value.trim();
+    if(!val) return;
+    const btn = root.querySelector("#newsAddBtn");
+    btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ...`;
+    try{
+      const file = newsDz.getFile();
+      let imageUrl = "";
+      if(file) imageUrl = await ImageUpload.upload(file, (p)=> newsDz.setProgress(p));
+      let list = await KV.get("news_list", []);
+      list.unshift({id:Date.now(), text:val, imageUrl, date:new Date().toLocaleDateString("uz-UZ")});
+      list = list.slice(0,30);
+      await KV.set("news_list", list);
+      input.value=""; newsDz.clear();
+      Toast.success("Qo'shildi");
+    }catch(err){ Toast.error("Xatolik yuz berdi"); }
+    btn.disabled = false; btn.textContent = "Yangilik qo'shish";
+    renderList();
+  });
+}
+
+/* =========================================================
+   ANIMATED DOTS BACKGROUND — perf: pauses on tab-hidden, respects
+   prefers-reduced-motion, adapts density to viewport
+   ========================================================= */
+(function(){
+  const canvas = document.getElementById("dots-canvas");
+  const ctx = canvas.getContext("2d");
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let w,h,dots=[],running=true;
+  function resize(){ w=canvas.width=window.innerWidth; h=canvas.height=window.innerHeight; }
+  function initDots(){
+    dots = [];
+    const count = reduced ? 0 : Math.floor((w*h)/9000);
+    for(let i=0;i<count;i++){
+      dots.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.6+.4,
+        vx:(Math.random()-.5)*.25, vy:(Math.random()-.5)*.25, a:Math.random()*.5+.15});
+    }
+  }
+  function tick(){
+    if(!running){ requestAnimationFrame(tick); return; }
+    ctx.clearRect(0,0,w,h);
+    const light = document.body.classList.contains("theme-light");
+    dots.forEach(d=>{
+      d.x+=d.vx; d.y+=d.vy;
+      if(d.x<0) d.x=w; if(d.x>w) d.x=0;
+      if(d.y<0) d.y=h; if(d.y>h) d.y=0;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+      ctx.fillStyle = light ? `rgba(12,28,77,${d.a*0.6})` : `rgba(255,255,255,${d.a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(tick);
+  }
+  document.addEventListener("visibilitychange", ()=>{ running = !document.hidden; });
+  window.addEventListener("resize", debounce(()=>{ resize(); initDots(); }, 150));
+  resize(); initDots(); tick();
+})();
+
+/* =========================================================
+   INIT
+   ========================================================= */
+Renderer.render();
+</script>
 </body>
 </html>
